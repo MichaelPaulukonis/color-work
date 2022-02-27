@@ -1,0 +1,7 @@
+images/
+*.png
+*.jpeg
+*.jpg 
+*.mp4
+
+node_modules/

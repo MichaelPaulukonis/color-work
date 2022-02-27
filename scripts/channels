@@ -1,0 +1,212 @@
+#!/bin/zsh
+
+## Have a look at http://www.fmwconcepts.com/imagemagick/rgbdots/index.php
+## for some nice scripts and configuration, etc.
+
+DIR="`pwd`"
+# source $DIR/tool.config
+declare channelList=()
+
+CMYK=(c, y, m, k)
+RGB=(r, g, b)
+
+# set up functions to report Usage and Usage with Description
+PROGNAME=`type $0 | awk '{print $3}'`  # search for executable on path
+PROGDIR=`dirname $PROGNAME`            # extract directory of pr
+
+usage()
+{
+cat << _EOF_
+Extract channels from image
+Colorizing the output to match the channel (white + channel-color)
+
+options
+
+  -h | --help   print this file
+
+USAGE: channels infile 
+
+_EOF_
+}
+
+# function to report error messages
+errMsg()
+	{
+	echo ""
+	echo $1
+	echo ""
+	usage
+	exit 1
+	}
+
+splitChannel() {
+    COLORSPACE=$1
+    CHANNEL=$2
+    COLOR=$3
+
+    if [[ $COLORSPACE == "cmyk" ]] ; then ; NEGATE="-negate" ; else ; NEGATE=""; fi
+
+    convert $infile -colorspace $COLORSPACE -channel $CHANNEL $NEGATE -separate "$FILENAME"_channel_"$CHANNEL".png
+    convert "$FILENAME"_channel_"$CHANNEL".png +level-colors $COLOR,white "$FILENAME"_channel_"$COLORSPACE"_"$CHANNEL"_colored.png
+    rm "$FILENAME"_channel_"$CHANNEL".png
+}   
+
+splitChannels() {
+
+    # see https://scriptingosx.com/2019/11/associative-arrays-in-zsh/
+
+    tmpA1="$DIR/channels_A_$$.mpc"
+    tmpA2="$DIR/channels_A_$$.cache"
+
+    # test input image
+    convert -quiet "$infile" +repage  "$tmpA1" ||
+        errMsg "--- FILE $infile DOES NOT EXIST OR IS NOT AN ORDINARY FILE, NOT READABLE OR HAS ZERO SIZE  ---"
+
+    rm -f $tmpA1 $tmpA2
+
+    FILENAME=$(basename -- "$infile")
+    extension="${FILENAME##*.}"
+    FILENAME="${FILENAME%.*}"
+
+    splitChannel cmyk c cyan
+    splitChannel cmyk m magenta
+    splitChannel cmyk y yellow
+    splitChannel cmyk k black
+
+    splitChannel rgb r red
+    splitChannel rgb g green
+    splitChannel rgb b blue
+}
+
+
+# test for correct number of arguments and get values
+if [ $# -eq 0 ]
+	then
+	# help information
+   echo ""
+   usage
+   exit 0
+elif [ $# -gt 22 ]
+	then
+	errMsg "--- TOO MANY ARGUMENTS WERE PROVIDED ---"
+else
+while [ $# -gt 0 ]
+		do
+			# get parameter values
+			case "$1" in
+		  -h|-help)    # help information
+					   echo ""
+					   usage2
+					   exit 0
+					   ;;
+				-p)    # get poster
+					   shift  # to get the next parameter
+					   # test if parameter starts with minus sign 
+					   errorMsg="--- INVALID POSTER SPECIFICATION ---"
+					   checkMinus "$1"
+					   poster=`expr "$1" : '\([0-9]*\)'`
+					   [ "$poster" = "" ] && errMsg "--- POSTER=$poster MUST BE A NON-NEGATIVE INTEGER VALUE (with no sign) ---"
+					   ;;
+				-b)    # get blur1
+					   shift  # to get the next parameter
+					   # test if parameter starts with minus sign 
+					   errorMsg="--- INVALID BLUR1 SPECIFICATION ---"
+					   checkMinus "$1"
+					   blur1=`expr "$1" : '\([.0-9]*\)'`
+					   [ "$blur1" = "" ] && errMsg "--- BLUR1=$blur1 MUST BE A NON-NEGATIVE FLOAT VALUE (with no sign) ---"
+					   ;;
+				-s)    # get sigmoidal
+					   shift  # to get the next parameter
+					   # test if parameter starts with minus sign 
+					   errorMsg="--- INVALID SIGMOIDAL SPECIFICATION ---"
+					   checkMinus "$1"
+					   sigmoidal=`expr "$1" : '\([.0-9]*\)'`
+					   [ "$sigmoidal" = "" ] && errMsg "--- SIGMOIDAL=$sigmoidal MUST BE A NON-NEGATIVE FLOAT VALUE (with no sign) ---"
+					   ;;
+				-B)    # get blur2
+					   shift  # to get the next parameter
+					   # test if parameter starts with minus sign 
+					   errorMsg="--- INVALID BLUR2 SPECIFICATION ---"
+					   checkMinus "$1"
+					   blur2=`expr "$1" : '\([.0-9]*\)'`
+					   [ "$blur2" = "" ] && errMsg "--- BLUR2=$blur2 MUST BE A NON-NEGATIVE FLOAT VALUE (with no sign) ---"
+					   ;;
+				-d)    # get dither
+					   shift  # to get the next parameter
+					   # test if parameter starts with minus sign 
+					   errorMsg="--- INVALID DITHER SPECIFICATION ---"
+					   checkMinus "$1"
+					   dither="$1"
+					   ;;
+				-e)    # get edge
+					   shift  # to get the next parameter
+					   # test if parameter starts with minus sign 
+					   errorMsg="--- INVALID EDGE SPECIFICATION ---"
+					   checkMinus "$1"
+					   edge=`expr "$1" : '\([0-9]*\)'`
+					   [ "$edge" = "" ] && errMsg "--- EDGE=$edge MUST BE A NON-NEGATIVE INTEGER VALUE (with no sign) ---"
+					   ;;
+				-g)    # get gain
+					   shift  # to get the next parameter
+					   # test if parameter starts with minus sign 
+					   errorMsg="--- INVALID GAIN SPECIFICATION ---"
+					   checkMinus "$1"
+					   gain=`expr "$1" : '\([.0-9]*\)'`
+					   [ "$gain" = "" ] && errMsg "--- GAIN=$gain MUST BE A NON-NEGATIVE FLOAT VALUE (with no sign) ---"
+					   ;;
+				-E)    # get erode
+					   shift  # to get the next parameter
+					   # test if parameter starts with minus sign 
+					   errorMsg="--- INVALID ERODE SPECIFICATION ---"
+					   checkMinus "$1"
+					   erode=`expr "$1" : '\([0-9]*\)'`
+					   [ "$erode" = "" ] && errMsg "--- ERODE=$erode MUST BE A NON-NEGATIVE INTEGER VALUE (with no sign) ---"
+					   ;;
+				-S)    # get sat
+					   shift  # to get the next parameter
+					   # test if parameter starts with minus sign 
+					   errorMsg="--- INVALID SAT SPECIFICATION ---"
+					   checkMinus "$1"
+					   sat=`expr "$1" : '\([0-9]*\)'`
+					   [ "$sat" = "" ] && errMsg "--- SAT=$sat MUST BE A NON-NEGATIVE INTEGER VALUE (with no sign) --- ---"
+					   ;;
+				 -)    # STDIN and end of arguments
+					   break
+					   ;;
+				-*)    # any other - argument
+					   errMsg "--- UNKNOWN OPTION ---"
+					   ;;
+		     	 *)    # end of arguments
+					   break
+					   ;;
+			esac
+			shift   # next option
+	done
+	#
+	# get infile and outfile
+	infile="$1"
+	# outfile="$2"
+fi
+ 
+
+# test that infile provided
+[ "$infile" = "" ] && errMsg "NO INPUT FILE SPECIFIED"
+
+# test that outfile provided
+# [ "$outfile" = "" ] && errMsg "NO OUTPUT FILE SPECIFIED"
+
+# test input image
+# convert -quiet "$infile" +repage  "$tmpA1" ||
+# 	errMsg "--- FILE $infile DOES NOT EXIST OR IS NOT AN ORDINARY FILE, NOT READABLE OR HAS ZERO SIZE  ---"
+
+
+# echo $TARGET
+
+# # default action
+
+# moveit $FILENAME $TARGET_ROOT/$FILENAME
+# buildit $FILENAME $TARGET_ROOT/$FILENAME
+
+splitChannels
+
+exit 0
