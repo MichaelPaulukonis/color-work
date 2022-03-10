@@ -68,6 +68,8 @@ splitChannels() {
     extension="${FILENAME##*.}"
     FILENAME="${FILENAME%.*}"
 
+    # NOTE: a single-step script is suggested @ https://legacy.imagemagick.org/discourse-server/viewtopic.php?t=28386
+
     splitChannel cmyk c cyan
     splitChannel cmyk m magenta
     splitChannel cmyk y yellow
